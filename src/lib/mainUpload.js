@@ -78,8 +78,9 @@ async function processReschedule(row, headerMap, { sheets, youtube }) {
 
     const { privacyStatus: expectedPrivacy, publishAt: expectedPublishAt } = determinePrivacyAndSchedule(jadwalUpload);
 
-    const currentPublishAt = currentStatus.publishAt || null;
-    const needsUpdate = currentStatus.privacyStatus !== expectedPrivacy || currentPublishAt !== expectedPublishAt;
+    const currentPublishAt = currentStatus.publishAt ? new Date(currentStatus.publishAt).getTime() : null;
+    const expectedPublishAtMs = expectedPublishAt ? new Date(expectedPublishAt).getTime() : null;
+    const needsUpdate = currentStatus.privacyStatus !== expectedPrivacy || currentPublishAt !== expectedPublishAtMs;
 
     if (!needsUpdate) return; // sudah sesuai, tidak ada yang perlu diubah
 
