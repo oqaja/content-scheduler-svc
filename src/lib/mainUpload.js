@@ -12,7 +12,10 @@ const {
   getVideoStatus,
 } = require("./youtubePublisher");
 
-/** Upload video BARU (row belum punya POST ID YT). */
+function sheetStatusFor(privacyStatus) {
+  return privacyStatus === "public" ? CONFIG.POSTED_STATUS_VALUE : CONFIG.SCHEDULED_STATUS_VALUE;
+}
+
 async function processNewUpload(row, headerMap, { sheets, drive, youtube }) {
   const nomorBaris = row._rowNumber;
   const judul = String(row[CONFIG.JUDUL_COLUMN] || "").trim();
@@ -36,11 +39,14 @@ async function processNewUpload(row, headerMap, { sheets, drive, youtube }) {
     const title = buildTitle(judul);
     const description = buildDescription(caption);
     const { privacyStatus, publishAt } = determinePrivacyAndSchedule(jadwalUpload);
+    const statusToWrite = sheetStatusFor(privacyStatus);
+
+    console.log(`  DEBUG baris ${nomorBaris}: jadwalUpload=${jadwalUpload.toISOString()}, privacyStatus=${privacyStatus}, statusToWrite="${statusToWrite}"`);
 
     const fileStream = await downloadFileStream(drive, videoFile.id);
     const uploaded = await uploadVideo(youtube, { title, description, fileStream, privacyStatus, publishAt });
 
-    const statusToWrite = privacyStatus === "public" ? CONFIG.POSTED_STATUS_VALUE : CONFIG.SCHEDULED_STATUS_VALUE;
+    console.log(`  DEBUG baris ${nomorBaris}: menulis STATUS_COLUMN kolom ke-${headerMap[CONFIG.STATUS_COLUMN]} = "${statusToWrite}"`);
     await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.STATUS_COLUMN], statusToWrite);
     await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.POST_ID_COLUMN], uploaded.id);
     await setCellValue(
@@ -60,7 +66,7 @@ async function processNewUpload(row, headerMap, { sheets, drive, youtube }) {
   }
 }
 
-/** Reschedule dinamis - cek row yang SUDAH punya POST ID YT, bandingkan jadwal sheet vs status YouTube saat ini. */
+/** Reschedule dinamis - SELALU pastikan status sheet sesuai expectedPrivacy saat ini, apa pun kondisi video di YouTube. */
 async function processReschedule(row, headerMap, { sheets, youtube }) {
   const nomorBaris = row._rowNumber;
   const videoId = String(row[CONFIG.POST_ID_COLUMN] || "").trim();
@@ -68,7 +74,7 @@ async function processReschedule(row, headerMap, { sheets, youtube }) {
   const jamCell = row[CONFIG.JAM_COLUMN];
 
   const jadwalUpload = combineDateAndTime(tanggalCell, jamCell, CONFIG.TIMEZONE);
-  if (!jadwalUpload) return; // jadwal invalid, skip diam-diam (bukan error baru, video sudah pernah sukses upload)
+  if (!jadwalUpload) return;
 
   try {
     const currentStatus = await getVideoStatus(youtube, videoId);
@@ -78,25 +84,30 @@ async function processReschedule(row, headerMap, { sheets, youtube }) {
     }
 
     const { privacyStatus: expectedPrivacy, publishAt: expectedPublishAt } = determinePrivacyAndSchedule(jadwalUpload);
+    const expectedSheetStatus = sheetStatusFor(expectedPrivacy);
 
-    const currentPublishAt = currentStatus.publishAt ? new Date(currentStatus.publishAt).getTime() : null;
+    console.log(`  DEBUG baris ${nomorBaris}: currentStatus.privacyStatus=${currentStatus.privacyStatus}, currentStatus.publishAt=${currentStatus.publishAt}, expectedPrivacy=${expectedPrivacy}, expectedSheetStatus="${expectedSheetStatus}"`);
+
+    const currentPublishAtMs = currentStatus.publishAt ? new Date(currentStatus.publishAt).getTime() : null;
     const expectedPublishAtMs = expectedPublishAt ? new Date(expectedPublishAt).getTime() : null;
-    const needsUpdate = currentStatus.privacyStatus !== expectedPrivacy || currentPublishAt !== expectedPublishAtMs;
+    const needsYoutubeUpdate = currentStatus.privacyStatus !== expectedPrivacy || currentPublishAtMs !== expectedPublishAtMs;
 
-    if (!needsUpdate) return; // sudah sesuai, tidak ada yang perlu diubah
+    if (needsYoutubeUpdate) {
+      console.log(`  Reschedule baris ${nomorBaris} (${videoId}): ${currentStatus.privacyStatus} -> ${expectedPrivacy}`);
+      await updateVideoSchedule(youtube, videoId, jadwalUpload);
+      await setCellValue(
+        sheets,
+        CONFIG.KALENDER_SPREADSHEET_ID,
+        CONFIG.SHEET_NAME,
+        nomorBaris,
+        headerMap[CONFIG.CATATAN_COLUMN],
+        `Reschedule ke ${expectedPrivacy}${expectedPublishAt ? `, publish ${jadwalUpload.toLocaleString("id-ID")}` : ""}.`
+      );
+    }
 
-    console.log(`  Reschedule baris ${nomorBaris} (${videoId}): ${currentStatus.privacyStatus} -> ${expectedPrivacy}`);
-    await updateVideoSchedule(youtube, videoId, jadwalUpload);
-    const statusToWrite = expectedPrivacy === "public" ? CONFIG.POSTED_STATUS_VALUE : CONFIG.SCHEDULED_STATUS_VALUE;
-    await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.STATUS_COLUMN], statusToWrite);
-    await setCellValue(
-      sheets,
-      CONFIG.KALENDER_SPREADSHEET_ID,
-      CONFIG.SHEET_NAME,
-      nomorBaris,
-      headerMap[CONFIG.CATATAN_COLUMN],
-      `Reschedule ke ${expectedPrivacy}${expectedPublishAt ? `, publish ${jadwalUpload.toLocaleString("id-ID")}` : ""}.`
-    );
+    // SELALU tulis status sheet sesuai expectedSheetStatus saat ini, terlepas dari apa video-nya sendiri perlu diupdate atau tidak.
+    console.log(`  DEBUG baris ${nomorBaris}: menulis STATUS_COLUMN kolom ke-${headerMap[CONFIG.STATUS_COLUMN]} = "${expectedSheetStatus}"`);
+    await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.STATUS_COLUMN], expectedSheetStatus);
   } catch (e) {
     console.log(`  (info) Gagal cek/reschedule baris ${nomorBaris} (${videoId}): ${e.message}`);
   }
@@ -104,6 +115,7 @@ async function processReschedule(row, headerMap, { sheets, youtube }) {
 
 async function runMainUpload({ sheets, drive, youtube }) {
   const headerMap = await getHeaderColumnMap(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME);
+  console.log(`DEBUG headerMap[${CONFIG.STATUS_COLUMN}] = ${headerMap[CONFIG.STATUS_COLUMN]}`);
 
   const readyRows = await getReadyRows(sheets);
   console.log(`${readyRows.length} row siap di-upload.`);
