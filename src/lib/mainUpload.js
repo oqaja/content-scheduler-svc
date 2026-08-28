@@ -40,7 +40,8 @@ async function processNewUpload(row, headerMap, { sheets, drive, youtube }) {
     const fileStream = await downloadFileStream(drive, videoFile.id);
     const uploaded = await uploadVideo(youtube, { title, description, fileStream, privacyStatus, publishAt });
 
-    await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.STATUS_COLUMN], CONFIG.POSTED_STATUS_VALUE);
+    const statusToWrite = privacyStatus === "public" ? CONFIG.POSTED_STATUS_VALUE : CONFIG.SCHEDULED_STATUS_VALUE;
+    await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.STATUS_COLUMN], statusToWrite);
     await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.POST_ID_COLUMN], uploaded.id);
     await setCellValue(
       sheets,
@@ -86,6 +87,8 @@ async function processReschedule(row, headerMap, { sheets, youtube }) {
 
     console.log(`  Reschedule baris ${nomorBaris} (${videoId}): ${currentStatus.privacyStatus} -> ${expectedPrivacy}`);
     await updateVideoSchedule(youtube, videoId, jadwalUpload);
+    const statusToWrite = expectedPrivacy === "public" ? CONFIG.POSTED_STATUS_VALUE : CONFIG.SCHEDULED_STATUS_VALUE;
+    await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.STATUS_COLUMN], statusToWrite);
     await setCellValue(
       sheets,
       CONFIG.KALENDER_SPREADSHEET_ID,
