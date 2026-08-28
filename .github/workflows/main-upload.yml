@@ -1,0 +1,26 @@
+name: Affiliate - Main Upload
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+concurrency:
+  group: affiliate-main-upload
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run main-upload
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.AFFILIATE_GOOGLE_SERVICE_ACCOUNT_KEY }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          SECRETS_WRITE_PAT: ${{ secrets.SECRETS_WRITE_PAT }}
