@@ -26,6 +26,9 @@ function isReadyToPost(row, now) {
   const judul = String(row[CONFIG.JUDUL_COLUMN] || "").trim();
   if (!judul) return false;
 
+  const postId = String(row[CONFIG.POST_ID_COLUMN] || "").trim();
+  if (postId !== "") return false; // sudah pernah upload, biarkan proses reschedule yang urus, bukan upload baru
+
   return true;
 }
 
