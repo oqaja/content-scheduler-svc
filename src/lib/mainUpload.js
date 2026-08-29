@@ -10,10 +10,36 @@ const {
   uploadVideo,
   updateVideoSchedule,
   getVideoStatus,
+  postFirstComment,
 } = require("./youtubePublisher");
 
 function sheetStatusFor(privacyStatus) {
   return privacyStatus === "public" ? CONFIG.POSTED_STATUS_VALUE : CONFIG.SCHEDULED_STATUS_VALUE;
+}
+
+/** Coba post first comment kalau ada isinya dan belum pernah sukses. Gagal itu wajar (video masih private) - dibiarkan, dicoba lagi run berikutnya. */
+async function tryPostFirstComment(row, headerMap, videoId, { sheets, youtube }) {
+  const nomorBaris = row._rowNumber;
+  const commentText = String(row[CONFIG.FIRST_COMMENT_COLUMN] || "").trim();
+  if (!commentText) return; // tidak ada first comment yang diminta
+
+  const currentStatus = String(row[CONFIG.FIRST_COMMENT_STATUS_COLUMN] || "").trim();
+  if (currentStatus === CONFIG.FIRST_COMMENT_DONE_VALUE) return; // sudah pernah sukses
+
+  try {
+    await postFirstComment(youtube, videoId, commentText);
+    await setCellValue(
+      sheets,
+      CONFIG.KALENDER_SPREADSHEET_ID,
+      CONFIG.SHEET_NAME,
+      nomorBaris,
+      headerMap[CONFIG.FIRST_COMMENT_STATUS_COLUMN],
+      CONFIG.FIRST_COMMENT_DONE_VALUE
+    );
+    console.log(`  First comment berhasil diposting di baris ${nomorBaris}.`);
+  } catch (e) {
+    console.log(`  (info) First comment baris ${nomorBaris} belum berhasil (kemungkinan video masih private): ${e.message}`);
+  }
 }
 
 async function processNewUpload(row, headerMap, { sheets, drive, youtube }) {
@@ -42,12 +68,9 @@ async function processNewUpload(row, headerMap, { sheets, drive, youtube }) {
     const { privacyStatus, publishAt } = determinePrivacyAndSchedule(jadwalUpload);
     const statusToWrite = sheetStatusFor(privacyStatus);
 
-    console.log(`  DEBUG baris ${nomorBaris}: jadwalUpload=${jadwalUpload.toISOString()}, privacyStatus=${privacyStatus}, statusToWrite="${statusToWrite}"`);
-
     const fileStream = await downloadFileStream(drive, videoFile.id);
     const uploaded = await uploadVideo(youtube, { title, description, fileStream, privacyStatus, publishAt });
 
-    console.log(`  DEBUG baris ${nomorBaris}: menulis STATUS_COLUMN kolom ke-${headerMap[CONFIG.STATUS_COLUMN]} = "${statusToWrite}"`);
     await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.STATUS_COLUMN], statusToWrite);
     await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.POST_ID_COLUMN], uploaded.id);
     await setCellValue(
@@ -60,6 +83,8 @@ async function processNewUpload(row, headerMap, { sheets, drive, youtube }) {
     );
 
     console.log(`  BERHASIL upload baris ${nomorBaris}: ${uploaded.id} (${privacyStatus})`);
+
+    await tryPostFirstComment(row, headerMap, uploaded.id, { sheets, youtube });
   } catch (e) {
     await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.STATUS_COLUMN], CONFIG.ERROR_STATUS_VALUE);
     await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.CATATAN_COLUMN], `Error upload: ${e.toString()}`);
@@ -67,7 +92,6 @@ async function processNewUpload(row, headerMap, { sheets, drive, youtube }) {
   }
 }
 
-/** Reschedule dinamis - SELALU pastikan status sheet sesuai expectedPrivacy saat ini, apa pun kondisi video di YouTube. */
 async function processReschedule(row, headerMap, { sheets, youtube }) {
   const nomorBaris = row._rowNumber;
   const videoId = String(row[CONFIG.POST_ID_COLUMN] || "").trim();
@@ -87,8 +111,6 @@ async function processReschedule(row, headerMap, { sheets, youtube }) {
     const { privacyStatus: expectedPrivacy, publishAt: expectedPublishAt } = determinePrivacyAndSchedule(jadwalUpload);
     const expectedSheetStatus = sheetStatusFor(expectedPrivacy);
 
-    console.log(`  DEBUG baris ${nomorBaris}: currentStatus.privacyStatus=${currentStatus.privacyStatus}, currentStatus.publishAt=${currentStatus.publishAt}, expectedPrivacy=${expectedPrivacy}, expectedSheetStatus="${expectedSheetStatus}"`);
-
     const currentPublishAtMs = currentStatus.publishAt ? new Date(currentStatus.publishAt).getTime() : null;
     const expectedPublishAtMs = expectedPublishAt ? new Date(expectedPublishAt).getTime() : null;
     const needsYoutubeUpdate = currentStatus.privacyStatus !== expectedPrivacy || currentPublishAtMs !== expectedPublishAtMs;
@@ -106,9 +128,9 @@ async function processReschedule(row, headerMap, { sheets, youtube }) {
       );
     }
 
-    // SELALU tulis status sheet sesuai expectedSheetStatus saat ini, terlepas dari apa video-nya sendiri perlu diupdate atau tidak.
-    console.log(`  DEBUG baris ${nomorBaris}: menulis STATUS_COLUMN kolom ke-${headerMap[CONFIG.STATUS_COLUMN]} = "${expectedSheetStatus}"`);
     await setCellValue(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME, nomorBaris, headerMap[CONFIG.STATUS_COLUMN], expectedSheetStatus);
+
+    await tryPostFirstComment(row, headerMap, videoId, { sheets, youtube });
   } catch (e) {
     console.log(`  (info) Gagal cek/reschedule baris ${nomorBaris} (${videoId}): ${e.message}`);
   }
@@ -116,7 +138,6 @@ async function processReschedule(row, headerMap, { sheets, youtube }) {
 
 async function runMainUpload({ sheets, drive, youtube }) {
   const headerMap = await getHeaderColumnMap(sheets, CONFIG.KALENDER_SPREADSHEET_ID, CONFIG.SHEET_NAME);
-  console.log(`DEBUG headerMap[${CONFIG.STATUS_COLUMN}] = ${headerMap[CONFIG.STATUS_COLUMN]}`);
 
   const readyRows = await getReadyRows(sheets);
   console.log(`${readyRows.length} row siap di-upload.`);

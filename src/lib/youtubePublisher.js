@@ -87,3 +87,18 @@ module.exports = {
   updateVideoSchedule,
   getVideoStatus,
 };
+
+/** Post komentar pertama ke video. Bisa gagal kalau video masih private (belum bisa dikomentari) - itu ditangani di pemanggil (retry di run berikutnya). */
+async function postFirstComment(youtube, videoId, text) {
+  await youtube.commentThreads.insert({
+    part: ["snippet"],
+    requestBody: {
+      snippet: {
+        videoId,
+        topLevelComment: { snippet: { textOriginal: text } },
+      },
+    },
+  });
+}
+
+module.exports.postFirstComment = postFirstComment;
