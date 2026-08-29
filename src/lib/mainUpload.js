@@ -18,7 +18,8 @@ function sheetStatusFor(privacyStatus) {
 
 async function processNewUpload(row, headerMap, { sheets, drive, youtube }) {
   const nomorBaris = row._rowNumber;
-  const judul = String(row[CONFIG.JUDUL_COLUMN] || "").trim();
+  const namaFile = String(row[CONFIG.FILE_MATCH_COLUMN] || "").trim();
+  const judul = String(row[CONFIG.TITLE_TEXT_COLUMN] || "").trim() || namaFile;
   const caption = String(row[CONFIG.CAPTION_COLUMN] || "").trim();
   const tanggalCell = row[CONFIG.TANGGAL_COLUMN];
   const jamCell = row[CONFIG.JAM_COLUMN];
@@ -31,9 +32,9 @@ async function processNewUpload(row, headerMap, { sheets, drive, youtube }) {
       throw new Error(`TANGGAL (${tanggalCell}) atau ${CONFIG.JAM_COLUMN} (${jamCell}) tidak valid.`);
     }
 
-    const videoFile = await cariFileVideo(drive, judul);
+    const videoFile = await cariFileVideo(drive, namaFile);
     if (!videoFile) {
-      throw new Error(`File video tidak ditemukan di folder Drive dengan nama: ${judul}`);
+      throw new Error(`File video tidak ditemukan di folder Drive dengan nama: ${namaFile}`);
     }
 
     const title = buildTitle(judul);

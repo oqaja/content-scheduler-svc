@@ -23,8 +23,8 @@ function isReadyToPost(row, now) {
   const statusYt = String(row[CONFIG.STATUS_COLUMN] || "").trim().toUpperCase();
   if (statusYt !== CONFIG.READY_STATUS_VALUE.toUpperCase()) return false;
 
-  const judul = String(row[CONFIG.JUDUL_COLUMN] || "").trim();
-  if (!judul) return false;
+  const namaFile = String(row[CONFIG.FILE_MATCH_COLUMN] || "").trim();
+  if (!namaFile) return false;
 
   const postId = String(row[CONFIG.POST_ID_COLUMN] || "").trim();
   if (postId !== "") return false; // sudah pernah upload, biarkan proses reschedule yang urus, bukan upload baru
