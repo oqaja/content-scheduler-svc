@@ -1,0 +1,17 @@
+{
+  "name": "content-scheduler-svc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "YouTube upload automation for the affiliate content pipeline — GitHub Actions, standalone.",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "main-upload": "node scripts/run-main-upload.js"
+  },
+  "dependencies": {
+    "googleapis": "^140.0.1",
+    "libsodium-wrappers": "^0.8.4"
+  }
+}
