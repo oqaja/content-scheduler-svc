@@ -11,6 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      KALENDER_SPREADSHEET_ID: ${{ vars.KALENDER_SPREADSHEET_ID }}
+      DRIVE_FOLDER_ID: ${{ vars.DRIVE_FOLDER_ID }}
+      CHANNEL_DESCRIPTION_TEMPLATE: ${{ vars.CHANNEL_DESCRIPTION_TEMPLATE }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

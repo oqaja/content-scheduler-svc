@@ -1,8 +1,10 @@
+// ID resource + template deskripsi dibaca dari environment variable (GitHub Actions
+// repo Variables / file .env lokal), tidak di-hardcode. Lihat .env.example.
 const CONFIG = {
-  KALENDER_SPREADSHEET_ID: "1raiIO1HccW7IxN9bh9BqUJ7DOHDVBN05GKRQ5xrrfeI",
+  KALENDER_SPREADSHEET_ID: getSecret("KALENDER_SPREADSHEET_ID"),
   SHEET_NAME: "KALENDER AFFILIATE",
 
-  DRIVE_FOLDER_ID: "1x01J5bDB7gSdU0T6tEu3AAepwSgBqhhq",
+  DRIVE_FOLDER_ID: getSecret("DRIVE_FOLDER_ID"),
 
   STATUS_COLUMN: "STATUS YT",
   READY_STATUS_VALUE: "Acc",
@@ -28,25 +30,9 @@ const CONFIG = {
   MAX_TITLE_LENGTH: 100, // batas YouTube buat judul video
   MAX_DESCRIPTION_LENGTH: 5000,
 
-  DESCRIPTION_TEMPLATE: `Otoritas Tertinggi Tren & Edukasi Sepatu di Indonesia! 👟⚖️ Selamat datang di channel YouTube Shoe Police!
-
-Banyak yang ngaku suka sepatu, tapi berapa banyak yang paham apa yang mereka pakai? Di sini, kami hadir sebagai "pengawas" sekaligus edukator di industri alas kaki. Kami nggak cuma bahas soal apa yang lagi hype, tapi kami bedah kenapa sebuah sepatu layak (atau nggak layak) masuk ke koleksi lo.
-
-Apa yang bakal lo dapetin di sini?
-- Sneaker Education: Bedah anatomi, sejarah, dan teknologi di balik sepatu favorit lo.
-- Industry Insights: Obrolan mendalam soal tren fashion, brand lokal, hingga pergerakan pasar global.
-- Legit Check & Quality Review: Kami jujur soal kualitas. Kalau bagus kami bilang mantap, kalau kurang kami laporin!
-- Community Culture: Menangkap esensi dari pergerakan komunitas (Ormas Shoe Police) dan gaya hidup di baliknya.
-
-sepatu kurasi shoepolice 👇🏻
-https://linktr.ee/Rekomendasishoepolice
-
-Di Shoe Police, kami percaya sepatu lebih dari sekadar alas kaki—ia adalah identitas.
-Follow the Movement:
-Instagram: @shoepolice__
-Tiktok: @shoepolice__
-💬 Join the Community: https://shorturl.at/EycJl
-📩 Business Inquiries: igshoepolice@gmail.com`,
+  // Template deskripsi channel (di-append ke tiap video). Diisi dari repo Variable
+  // CHANNEL_DESCRIPTION_TEMPLATE.
+  DESCRIPTION_TEMPLATE: getSecret("CHANNEL_DESCRIPTION_TEMPLATE"),
 };
 
 function getSecret(name) {

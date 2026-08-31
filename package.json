@@ -2,7 +2,7 @@
   "name": "affiliate-automation",
   "version": "1.0.0",
   "private": true,
-  "description": "YouTube upload automation for Shorts Affiliate program — GitHub Actions, standalone from other systems.",
+  "description": "YouTube upload automation for the affiliate content pipeline — GitHub Actions, standalone.",
   "type": "commonjs",
   "engines": {
     "node": ">=20"
