@@ -1,0 +1,31 @@
+name: DFM Affiliate - Insight
+on:
+  schedule:
+    - cron: '17 0 * * *' # tiap hari ~07:17 WIB
+  workflow_dispatch:
+concurrency:
+  group: dfm-affiliate-insight
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: dfm-youtube
+    env:
+      DFM_INSIGHT_SPREADSHEET_ID: ${{ vars.DFM_INSIGHT_SPREADSHEET_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run insight
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.AFFILIATE_GOOGLE_SERVICE_ACCOUNT_KEY }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          DFM_YT_REFRESH_TOKEN: ${{ secrets.DFM_YT_REFRESH_TOKEN }}
+          SECRETS_WRITE_PAT: ${{ secrets.SECRETS_WRITE_PAT }}

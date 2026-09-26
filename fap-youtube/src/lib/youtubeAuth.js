@@ -32,7 +32,8 @@ async function updateGithubSecret(secretName, secretValue) {
   console.log(`  Secret '${secretName}' berhasil di-update.`);
 }
 
-async function getYoutubeClient() {
+/** OAuth2 client channel yang sudah di-refresh. Dipakai YouTube Data API + YouTube Analytics API. */
+async function getYoutubeOAuthClient() {
   const clientId = process.env.YT_CLIENT_ID;
   const clientSecret = process.env.YT_CLIENT_SECRET;
   const refreshToken = process.env.FAP_YT_REFRESH_TOKEN;
@@ -48,7 +49,12 @@ async function getYoutubeClient() {
   }
 
   oauth2Client.setCredentials(credentials);
-  return google.youtube({ version: "v3", auth: oauth2Client });
+  return oauth2Client;
 }
 
-module.exports = { getYoutubeClient };
+async function getYoutubeClient() {
+  const auth = await getYoutubeOAuthClient();
+  return google.youtube({ version: "v3", auth });
+}
+
+module.exports = { getYoutubeClient, getYoutubeOAuthClient };
