@@ -35,10 +35,12 @@ const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}`;
 //   - videos.insert (upload)                        -> youtube.upload
 //   - videos.update / videos.list (reschedule)       -> youtube
 //   - commentThreads.insert (first comment)          -> youtube.force-ssl
+//   - reports.query (tarik insight, src/lib/youtubeInsight.js) -> yt-analytics.readonly
 const SCOPES = [
   "https://www.googleapis.com/auth/youtube.upload",
   "https://www.googleapis.com/auth/youtube",
   "https://www.googleapis.com/auth/youtube.force-ssl",
+  "https://www.googleapis.com/auth/yt-analytics.readonly",
 ];
 
 // Nama secret di GitHub repo — prefix AKUN biar gak bentrok sama folder channel lain

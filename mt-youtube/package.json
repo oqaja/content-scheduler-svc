@@ -9,7 +9,8 @@
   },
   "scripts": {
     "main-upload": "node scripts/run-main-upload.js",
-    "regen-token": "node scripts/regen-refresh-token.js"
+    "regen-token": "node scripts/regen-refresh-token.js",
+    "insight": "node scripts/run-insight.js"
   },
   "dependencies": {
     "googleapis": "^140.0.1",
