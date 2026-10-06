@@ -79,6 +79,27 @@ function buildInsightRecord(video, analyticsRow, lastUpdated) {
   return record;
 }
 
+/** Tab Sheets punya jumlah kolom tetap; kalau header insight melewati batas itu, tambah kolom dulu (kalau gak, API nolak tulis). */
+async function ensureColumnCapacity(sheets, spreadsheetId, sheetName, neededColumns) {
+  const res = await withRateLimitRetry(
+    () => sheets.spreadsheets.get({ spreadsheetId, fields: "sheets.properties" }),
+    "ensureColumnCapacity(get)"
+  );
+  const sheet = res.data.sheets.find((s) => s.properties.title === sheetName);
+  const columnCount = sheet.properties.gridProperties.columnCount;
+  if (columnCount >= neededColumns) return;
+  await withRateLimitRetry(
+    () =>
+      sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: [{ appendDimension: { sheetId: sheet.properties.sheetId, dimension: "COLUMNS", length: neededColumns - columnCount } }],
+        },
+      }),
+    "ensureColumnCapacity(append)"
+  );
+}
+
 /** Pastikan semua INSIGHT_HEADERS ada di baris 1; yang belum ada ditaruh persis setelah header terakhir yang terisi. */
 async function ensureInsightHeaders(sheets, spreadsheetId, sheetName) {
   const res = await withRateLimitRetry(
@@ -107,6 +128,7 @@ async function ensureInsightHeaders(sheets, spreadsheetId, sheetName) {
   }
 
   if (toWrite.length > 0) {
+    await ensureColumnCapacity(sheets, spreadsheetId, sheetName, nextIdx);
     await withRateLimitRetry(
       () =>
         sheets.spreadsheets.values.batchUpdate({
