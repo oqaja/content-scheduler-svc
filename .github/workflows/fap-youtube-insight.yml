@@ -15,7 +15,7 @@ jobs:
       run:
         working-directory: fap-youtube
     env:
-      FAP_INSIGHT_SPREADSHEET_ID: ${{ vars.FAP_INSIGHT_SPREADSHEET_ID }}
+      KALENDER_SPREADSHEET_ID: ${{ vars.KALENDER_SPREADSHEET_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
