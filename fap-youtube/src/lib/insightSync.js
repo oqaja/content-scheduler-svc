@@ -35,6 +35,7 @@ const INSIGHT_HEADERS = [
   "YT AVG VIEW %",
   "YT SUBS GAINED",
   "YT INSIGHT UPDATED",
+  "YT LINK",
 ];
 
 function dateOnly(date) {
@@ -65,6 +66,7 @@ function buildInsightRecord(video, analyticsRow, lastUpdated) {
     "YT LIKES": toNumber(stats.likeCount),
     "YT COMMENTS": toNumber(stats.commentCount),
     "YT INSIGHT UPDATED": lastUpdated,
+    "YT LINK": `https://youtube.com/shorts/${video.id}`,
   };
 
   if (analyticsRow === null) return record; // Analytics gagal -> kolom Analytics biarkan nilai lama
